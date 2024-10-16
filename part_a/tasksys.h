@@ -2,7 +2,9 @@
 #define _TASKSYS_H
 
 #include "itasksys.h"
-
+#include <mutex>
+#include <thread>
+#include <condition_variable>
 /*
  * TaskSystemSerial: This class is the student's implementation of a
  * serial task execution engine.  See definition of ITaskSystem in
@@ -30,10 +32,17 @@ class TaskSystemParallelSpawn: public ITaskSystem {
         TaskSystemParallelSpawn(int num_threads);
         ~TaskSystemParallelSpawn();
         const char* name();
+        void single_thread_spin();
         void run(IRunnable* runnable, int num_total_tasks);
         TaskID runAsyncWithDeps(IRunnable* runnable, int num_total_tasks,
                                 const std::vector<TaskID>& deps);
         void sync();
+    private:
+        int mNumThreads = 1;
+        int mNumTasks = 1;
+        int counter_ = 0;
+        std::mutex* mutex_;
+        IRunnable* runnable_;
 };
 
 /*
@@ -47,10 +56,21 @@ class TaskSystemParallelThreadPoolSpinning: public ITaskSystem {
         TaskSystemParallelThreadPoolSpinning(int num_threads);
         ~TaskSystemParallelThreadPoolSpinning();
         const char* name();
+        void single_thread_spin();
         void run(IRunnable* runnable, int num_total_tasks);
         TaskID runAsyncWithDeps(IRunnable* runnable, int num_total_tasks,
                                 const std::vector<TaskID>& deps);
         void sync();
+    private:
+        std::thread* threads;
+        int mNumThreads = 1;
+        int mNumTasks = 1;
+        int counter_ = -1;
+        int finished_task = 0;
+        int quitting = 0;
+        std::mutex* mutex_;
+        std::mutex* fmutex_;
+        IRunnable* runnable_;
 };
 
 /*
@@ -64,10 +84,22 @@ class TaskSystemParallelThreadPoolSleeping: public ITaskSystem {
         TaskSystemParallelThreadPoolSleeping(int num_threads);
         ~TaskSystemParallelThreadPoolSleeping();
         const char* name();
+        void single_thread_spin();
         void run(IRunnable* runnable, int num_total_tasks);
         TaskID runAsyncWithDeps(IRunnable* runnable, int num_total_tasks,
                                 const std::vector<TaskID>& deps);
         void sync();
+    private:
+        std::thread* threads;
+        int mNumThreads = 1;
+        int mNumTasks = 1;
+        int counter_ = -1;
+        int finished_task = 0;
+        int quitting = 0;
+        std::mutex* mutex_;
+        std::mutex* fmutex_;
+        IRunnable* runnable_;
+        std::condition_variable* cv_;
 };
 
 #endif
