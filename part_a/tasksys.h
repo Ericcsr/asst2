@@ -100,6 +100,7 @@ class TaskSystemParallelThreadPoolSleeping: public ITaskSystem {
         std::mutex* fmutex_;
         IRunnable* runnable_;
         std::condition_variable* cv_;
+        std::condition_variable* cv2_;
 };
 
 #endif

@@ -245,6 +245,7 @@ TaskSystemParallelThreadPoolSleeping::TaskSystemParallelThreadPoolSleeping(int n
     mutex_ = new std::mutex();
     fmutex_ = new std::mutex();
     cv_ = new std::condition_variable();
+    cv2_ = new std::condition_variable();
     threads = new std::thread[num_threads];
     for (int i = 0; i < num_threads; i++)
     {
@@ -259,9 +260,11 @@ TaskSystemParallelThreadPoolSleeping::~TaskSystemParallelThreadPoolSleeping() {
     // Implementations are free to add new class member variables
     // (requiring changes to tasksys.h).
     //
+    //std::cout << "Start quitting" << std::endl;
     mutex_->lock();
     quitting = 1;
     mutex_->unlock();
+    //std::cout << "quitting" << std::endl;
     cv_->notify_all();
     for (int i = 0; i < mNumThreads; i++)
     {
@@ -292,11 +295,14 @@ void TaskSystemParallelThreadPoolSleeping::single_thread_spin()
         i = counter_;
         counter_--;
         mutex_->unlock();
-        // std::cout << i << std::endl;
+        //std::cout << i << std::endl;
         runnable_->runTask(i, mNumTasks);
-        fmutex_->lock();
+        std::unique_lock<std::mutex> lk(*fmutex_);
         finished_task++;
-        fmutex_->unlock();
+        if (finished_task == mNumTasks) {
+            cv2_->notify_one();
+            //std::cout << "Notified" << std::endl;
+        }
     }
         
 }
@@ -318,16 +324,22 @@ void TaskSystemParallelThreadPoolSleeping::run(IRunnable* runnable, int num_tota
     mutex_->unlock();
     cv_->notify_all();
 
-    while (true)
-    {
-        fmutex_->lock();
-        if (finished_task == num_total_tasks)
-        {
-            fmutex_->unlock();
-            break;
-        }
-        fmutex_->unlock();
-    }
+    // std::cout << "unlocked" << std::endl;
+    // Should wait until notify all received
+
+    std::unique_lock<std::mutex> lk(*fmutex_);
+    cv2_->wait(lk, [&]{ return finished_task == mNumTasks; });
+    //std::cout << "unlocked" << std::endl;
+    // while (true)
+    // {
+    //     fmutex_->lock();
+    //     if (finished_task == num_total_tasks)
+    //     {
+    //         fmutex_->unlock();
+    //         break;
+    //     }
+    //     fmutex_->unlock();
+    // }
 }
 
 TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnable, int num_total_tasks,
