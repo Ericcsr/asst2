@@ -1,4 +1,5 @@
 #include "tasksys.h"
+#include <iostream>
 
 
 IRunnable::~IRunnable() {}
@@ -128,6 +129,11 @@ void TaskSystemParallelThreadPoolSleeping::single_thread_spin()
     {
         readyTasks_ -> lock();
         if(readyTasks.empty()){
+            if (finishedTask.load() >= mTargetTasks) {
+                readyTasks_ -> unlock();
+                cv2_-> notify_one();
+                return;
+            }
             readyTasks_ -> unlock();
             continue;
         }
@@ -150,6 +156,7 @@ void TaskSystemParallelThreadPoolSleeping::single_thread_spin()
 
         mTaskLock_[id] -> lock();
         mFinishedTask[id] ++;
+        mRunningTask[id] --;
         if(mFinishedTask[id] == numTasks){
             for(auto depId: mSupportTask[id]){
                 mTaskLock_[depId] -> lock();
@@ -161,13 +168,12 @@ void TaskSystemParallelThreadPoolSleeping::single_thread_spin()
                 }
                 mTaskLock_[depId] -> unlock();
             }
-            fmutex_ -> lock();
-            finishedTask++;
-            if (finishedTask == mTotalTasks) {
-                cv2_->notify_one();
-            //std::cout << "Notified" << std::endl;
+            int current = ++finishedTask;
+            if (current >= mTargetTasks) {
+                mTaskLock_[id] -> unlock();
+                cv2_-> notify_one();
+                return;
             }
-            fmutex_ -> unlock();
         }
         mTaskLock_[id] -> unlock();
     }  
@@ -185,20 +191,35 @@ TaskSystemParallelThreadPoolSleeping::TaskSystemParallelThreadPoolSleeping(int n
     // Implementations are free to add new class member variables
     // (requiring changes to tasksys.h).
 
+    mTotalTasks_  = new std::mutex();
+    readyTasks_ = new std::mutex();
+    mTotalTasks_ = new std::mutex();
+    mTaskIdCnt_ = new std::mutex();
+    fmutex_ = new std::mutex();
+    cv2_ = new std::condition_variable();
+
     mNumThreads = num_threads;
     mFinishedTask.resize(MaxTaskNum);
     mRunningTask.resize(MaxTaskNum);
     mTaskLock_.resize(MaxTaskNum);
+    mNumTasks.resize(MaxTaskNum);
     mBlockNum.resize(MaxTaskNum);
     mRunnable.resize(MaxTaskNum);
     mSupportTask.resize(MaxTaskNum);
-    mTaskIdCnt = -1;
+    mTaskIdCnt = 0;
+    mTargetTasks = MaxTaskNum * 2;
     
     threads = new std::thread[num_threads];
     for (int i = 0; i < num_threads; i++)
     {
         threads[i] = std::thread(&TaskSystemParallelThreadPoolSleeping::single_thread_spin, this);
     }
+
+    mTotalTasks_ -> unlock();
+    readyTasks_ -> unlock();
+    mTotalTasks_ -> unlock();
+    mTaskIdCnt_ -> unlock();
+
 }
 
 TaskSystemParallelThreadPoolSleeping::~TaskSystemParallelThreadPoolSleeping() {
@@ -208,10 +229,15 @@ TaskSystemParallelThreadPoolSleeping::~TaskSystemParallelThreadPoolSleeping() {
     // Implementations are free to add new class member variables
     // (requiring changes to tasksys.h).
     //
+    finishedTask = 0;
+    mTotalTasks = 0;
+    mTaskIdCnt = 0;
+    mTargetTasks = -1;
     for (int i = 0; i < mNumThreads; i++)
     {
         threads[i].join();
     }
+    mTargetTasks = MaxTaskNum * 2;
 }
 
 void TaskSystemParallelThreadPoolSleeping::run(IRunnable* runnable, int num_total_tasks) {
@@ -260,11 +286,6 @@ TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnabl
         readyTasks.push(taskId);
         readyTasks_->unlock();
     }
-    else{
-        blockedTasks_->lock();
-        blockedTasks.push(taskId);
-        blockedTasks_->unlock();
-    }
 
     mTaskLock_[taskId] -> lock();
     mBlockNum[taskId] = blockNum;
@@ -278,18 +299,18 @@ TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnabl
 
 void TaskSystemParallelThreadPoolSleeping::sync() {
 
-    //
-    // TODO: CS149 students will modify the implementation of this method in Part B.
-    //
     mTotalTasks_ -> lock();
-    std::unique_lock<std::mutex> lk(*fmutex_);
-    cv2_->wait(lk, [&]{ return finishedTask == mTotalTasks;});
-    mTotalTasks = 0;
-    mTaskIdCnt = -1;
-    fmutex_ -> lock();
+    mTargetTasks = mTotalTasks;
+    if(finishedTask >= mTargetTasks){
+    }
+    else{
+        std::unique_lock<std::mutex> lk(*fmutex_);
+        cv2_ -> wait(lk, [this]{ return finishedTask.load() >= mTargetTasks; });
+    }
+    
     finishedTask = 0;
-    fmutex_ -> unlock();
-
-    mTotalTasks_ ->unlock();
-    return;
+    mTotalTasks = 0;
+    mTaskIdCnt = 0;
+    mTargetTasks = MaxTaskNum * 2;
+    mTotalTasks_ -> unlock();
 }

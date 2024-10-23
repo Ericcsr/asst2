@@ -82,6 +82,7 @@ class TaskSystemParallelThreadPoolSleeping: public ITaskSystem {
         
         std::mutex* mTotalTasks_;
         int mTotalTasks = 0;
+        int mTargetTasks = 0;
 
         std::mutex* mTaskIdCnt_;
         int mTaskIdCnt = 0;
@@ -94,12 +95,10 @@ class TaskSystemParallelThreadPoolSleeping: public ITaskSystem {
         std::vector <std::mutex*> mTaskLock_;
         std::vector <std::vector<int>> mSupportTask;
 
-        std::queue<int> blockedTasks;
-        std::mutex* blockedTasks_;
         std::queue<int> readyTasks;
         std::mutex* readyTasks_;
 
-        int finishedTask;
+        std::atomic<int> finishedTask;
 
         std::mutex* fmutex_;
         std::condition_variable* cv2_;
