@@ -2,6 +2,13 @@
 #define _TASKSYS_H
 
 #include "itasksys.h"
+#include <mutex>
+#include <thread>
+#include <queue>
+#include <atomic>
+#include <condition_variable>
+
+const int MaxTaskNum = 50000;
 
 /*
  * TaskSystemSerial: This class is the student's implementation of a
@@ -68,6 +75,34 @@ class TaskSystemParallelThreadPoolSleeping: public ITaskSystem {
         TaskID runAsyncWithDeps(IRunnable* runnable, int num_total_tasks,
                                 const std::vector<TaskID>& deps);
         void sync();
+        void single_thread_spin();
+    private:
+        std::thread* threads;
+        int mNumThreads = 1;
+        
+        std::mutex* mTotalTasks_;
+        int mTotalTasks = 0;
+
+        std::mutex* mTaskIdCnt_;
+        int mTaskIdCnt = 0;
+
+        std::vector <int > mFinishedTask;
+        std::vector <int > mRunningTask;
+        std::vector <int> mNumTasks;
+        std::vector <int> mBlockNum;
+        std::vector<IRunnable *> mRunnable;
+        std::vector <std::mutex*> mTaskLock_;
+        std::vector <std::vector<int>> mSupportTask;
+
+        std::queue<int> blockedTasks;
+        std::mutex* blockedTasks_;
+        std::queue<int> readyTasks;
+        std::mutex* readyTasks_;
+
+        int finishedTask;
+
+        std::mutex* fmutex_;
+        std::condition_variable* cv2_;
 };
 
 #endif
