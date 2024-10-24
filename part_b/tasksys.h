@@ -6,6 +6,7 @@
 #include <thread>
 #include <queue>
 #include <atomic>
+#include <utility>
 #include <condition_variable>
 
 const int MaxTaskNum = 50000;
@@ -94,7 +95,7 @@ class TaskSystemParallelThreadPoolSleeping: public ITaskSystem {
         std::vector <std::mutex*> mTaskLock_;
         std::vector <std::vector<int>> mSupportTask;
 
-        std::queue<int> readyTasks;
+        std::priority_queue<std::pair<int,int> > readyTasks;
         std::mutex* readyTasks_;
 
         std::atomic<int> finishedTask;
