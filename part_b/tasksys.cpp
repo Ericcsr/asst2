@@ -139,37 +139,32 @@ void TaskSystemParallelThreadPoolSleeping::single_thread_spin()
             readyTasks_ -> unlock();
             continue;
         }
-        readyTasks_ -> unlock();
 
-        taskLock_ -> lock();
         int id = readyTasks.top().second;
+        // mTaskLock_[id] -> lock();
         int i = mFinishedTask[id] + mRunningTask[id];
 
         // The last task for taskId id;
         if(mNumTasks[id] == i + 1){
-            readyTasks_ -> lock();
             readyTasks.pop();
-            readyTasks_ -> unlock();
         }
         mRunningTask[id] ++;
-        taskLock_ -> unlock();
+        readyTasks_ -> unlock();
+        //mTaskLock_[id] -> unlock();
 
         auto runnable = mRunnable[id];
         int numTasks = mNumTasks[id];
-
         runnable->runTask(i, numTasks);
 
         //mTaskLock_[id] -> lock();
-        taskLock_ -> lock();
+        readyTasks_ -> lock();
         mFinishedTask[id] ++;
         mRunningTask[id] --;
         if(mFinishedTask[id] == numTasks){
             for(auto depId: mSupportTask[id]){
                 mBlockNum[depId] --;
                 if(mBlockNum[depId] == 0){
-                    readyTasks_ -> lock();
                     readyTasks.push(std::make_pair(mSupportTask[depId].size(),depId));
-                    readyTasks_ -> unlock();
                 }
             }
             int current = ++finishedTask;
@@ -180,7 +175,7 @@ void TaskSystemParallelThreadPoolSleeping::single_thread_spin()
             }
         }
         //mTaskLock_[id] -> unlock();
-        taskLock_ -> unlock();
+        readyTasks_ -> unlock();
     }  
 }
 
@@ -203,6 +198,7 @@ TaskSystemParallelThreadPoolSleeping::TaskSystemParallelThreadPoolSleeping(int n
     mNumThreads = num_threads;
     mFinishedTask.resize(MaxTaskNum);
     mRunningTask.resize(MaxTaskNum);
+    //mTaskLock_.resize(MaxTaskNum);
     mNumTasks.resize(MaxTaskNum);
     mBlockNum.resize(MaxTaskNum);
     mRunnable.resize(MaxTaskNum);
@@ -264,6 +260,7 @@ TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnabl
     taskId = mTaskIdCnt;
     mTaskIdCnt ++;
 
+    //mTaskLock_[taskId] = new std::mutex();
     mNumTasks[taskId] = num_total_tasks;
     mBlockNum[taskId] = 0;
     mFinishedTask[taskId] = 0;
@@ -271,21 +268,28 @@ TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnabl
     mSupportTask[taskId].clear();
     
     int blockNum = 0;
-    taskLock_ -> lock();
+    readyTasks_-> lock();
+    // mTaskLock_[taskId] -> lock();
     for(auto dependId: deps){
+        // mTaskLock_[dependId] -> lock();
         if(mFinishedTask[dependId] < mNumTasks[dependId]){
             blockNum++;
             mSupportTask[dependId].push_back(taskId);
         }
     }
     if(!blockNum){
-        readyTasks_ -> lock();
         readyTasks.push(std::make_pair(mSupportTask[taskId].size(),taskId));
-        readyTasks_ -> unlock();
     }
 
+    
     mBlockNum[taskId] = blockNum;
-    taskLock_ -> unlock();
+    
+
+    // for(auto dependId:deps){
+    //     mTaskLock_[dependId] -> unlock();
+    // }
+    //mTaskLock_[taskId] -> unlock();
+    readyTasks_->unlock();
     return taskId;
 }
 

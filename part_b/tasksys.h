@@ -96,7 +96,7 @@ class TaskSystemParallelThreadPoolSleeping: public ITaskSystem {
 
         std::priority_queue<std::pair<int,int> > readyTasks;
         std::mutex* readyTasks_;
-        std::mutex* taskLock_;
+        //std::mutex* taskLock_;
 
         std::atomic<int> finishedTask;
         std::atomic<bool> quitting;
