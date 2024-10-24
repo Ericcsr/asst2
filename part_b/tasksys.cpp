@@ -140,7 +140,7 @@ void TaskSystemParallelThreadPoolSleeping::single_thread_spin()
             continue;
         }
 
-        int id = readyTasks.top().second;
+        int id = readyTasks.front();
         // mTaskLock_[id] -> lock();
         int i = mFinishedTask[id] + mRunningTask[id];
 
@@ -164,7 +164,7 @@ void TaskSystemParallelThreadPoolSleeping::single_thread_spin()
             for(auto depId: mSupportTask[id]){
                 mBlockNum[depId] --;
                 if(mBlockNum[depId] == 0){
-                    readyTasks.push(std::make_pair(mSupportTask[depId].size(),depId));
+                    readyTasks.push(depId);
                 }
             }
             int current = ++finishedTask;
@@ -278,7 +278,7 @@ TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnabl
         }
     }
     if(!blockNum){
-        readyTasks.push(std::make_pair(mSupportTask[taskId].size(),taskId));
+        readyTasks.push(taskId);
     }
 
     

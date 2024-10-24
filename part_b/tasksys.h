@@ -94,7 +94,7 @@ class TaskSystemParallelThreadPoolSleeping: public ITaskSystem {
         std::vector<IRunnable *> mRunnable;
         std::vector <std::vector<int>> mSupportTask;
 
-        std::priority_queue<std::pair<int,int> > readyTasks;
+        std::queue<int> readyTasks;
         std::mutex* readyTasks_;
         //std::mutex* taskLock_;
 
