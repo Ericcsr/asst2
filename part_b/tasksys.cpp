@@ -197,7 +197,6 @@ TaskSystemParallelThreadPoolSleeping::TaskSystemParallelThreadPoolSleeping(int n
     // (requiring changes to tasksys.h).
 
     readyTasks_ = new std::mutex();
-    mTaskIdCnt_ = new std::mutex();
     fmutex_ = new std::mutex();
     cv2_ = new std::condition_variable();
 
@@ -219,7 +218,6 @@ TaskSystemParallelThreadPoolSleeping::TaskSystemParallelThreadPoolSleeping(int n
         threads[i] = std::thread(&TaskSystemParallelThreadPoolSleeping::single_thread_spin, this);
     }
     readyTasks_ -> unlock();
-    mTaskIdCnt_ -> unlock();
 
 }
 
