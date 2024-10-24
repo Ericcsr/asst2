@@ -9,7 +9,7 @@
 #include <utility>
 #include <condition_variable>
 
-const int MaxTaskNum = 50000;
+const int MaxTaskNum = 4000;
 
 /*
  * TaskSystemSerial: This class is the student's implementation of a
@@ -87,8 +87,8 @@ class TaskSystemParallelThreadPoolSleeping: public ITaskSystem {
         std::mutex* mTaskIdCnt_;
         int mTaskIdCnt = 0;
 
-        std::vector <int > mFinishedTask;
-        std::vector <int > mRunningTask;
+        std::vector <int> mFinishedTask;
+        std::vector <int> mRunningTask;
         std::vector <int> mNumTasks;
         std::vector <int> mBlockNum;
         std::vector<IRunnable *> mRunnable;

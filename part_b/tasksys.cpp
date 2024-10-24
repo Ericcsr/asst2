@@ -1,6 +1,6 @@
 #include "tasksys.h"
 #include <iostream>
-
+#include <cstring>
 
 IRunnable::~IRunnable() {}
 
@@ -127,16 +127,22 @@ void TaskSystemParallelThreadPoolSleeping::single_thread_spin()
     // While loop grab work from readyQueue
     while (true)
     {
-        if (quitting.load()){
+        if (quitting.load(std::memory_order_relaxed)){
             return ;
         }
-        if (finishedTask.load() >= mTargetTasks) {
+        if (finishedTask.load(std::memory_order_relaxed) >= mTargetTasks) {
             cv2_-> notify_one();
+            std::this_thread::yield();
             continue;
         }
+
+        // std::unique_lock<std::mutex> lk(*readyTasks_);
+        // cv_->wait(lk);
+
         readyTasks_ -> lock();
         if(readyTasks.empty()){
             readyTasks_ -> unlock();
+            std::this_thread::yield();
             continue;
         }
 
@@ -148,7 +154,7 @@ void TaskSystemParallelThreadPoolSleeping::single_thread_spin()
         if(mNumTasks[id] == i + 1){
             readyTasks.pop();
         }
-        mRunningTask[id] ++;
+        ++mRunningTask[id];
         readyTasks_ -> unlock();
         //mTaskLock_[id] -> unlock();
 
@@ -158,21 +164,16 @@ void TaskSystemParallelThreadPoolSleeping::single_thread_spin()
 
         //mTaskLock_[id] -> lock();
         readyTasks_ -> lock();
-        mFinishedTask[id] ++;
-        mRunningTask[id] --;
+        ++mFinishedTask[id];
+        --mRunningTask[id];
         if(mFinishedTask[id] == numTasks){
             for(auto depId: mSupportTask[id]){
-                mBlockNum[depId] --;
+                -- mBlockNum[depId];
                 if(mBlockNum[depId] == 0){
                     readyTasks.push(depId);
                 }
             }
-            int current = ++finishedTask;
-            if (current >= mTargetTasks) {
-                cv2_-> notify_one();
-                readyTasks_ -> unlock();
-                continue;
-            }
+            ++finishedTask;
         }
         //mTaskLock_[id] -> unlock();
         readyTasks_ -> unlock();
@@ -196,11 +197,12 @@ TaskSystemParallelThreadPoolSleeping::TaskSystemParallelThreadPoolSleeping(int n
     cv2_ = new std::condition_variable();
 
     mNumThreads = num_threads;
+    
     mFinishedTask.resize(MaxTaskNum);
     mRunningTask.resize(MaxTaskNum);
-    //mTaskLock_.resize(MaxTaskNum);
     mNumTasks.resize(MaxTaskNum);
     mBlockNum.resize(MaxTaskNum);
+
     mRunnable.resize(MaxTaskNum);
     mSupportTask.resize(MaxTaskNum);
     mTaskIdCnt = 0;
@@ -290,6 +292,7 @@ TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnabl
     // }
     //mTaskLock_[taskId] -> unlock();
     readyTasks_->unlock();
+    //cv_->notify_all();
     return taskId;
 }
 
