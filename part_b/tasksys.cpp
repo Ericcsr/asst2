@@ -158,6 +158,7 @@ void TaskSystemParallelThreadPoolSleeping::single_thread_spin()
         mFinishedTask[id] ++;
         mRunningTask[id] --;
         if(mFinishedTask[id] == numTasks){
+            std::cout << "task: " << id << " done " << mTotalTasks << " " << finishedTask << std::endl;
             for(auto depId: mSupportTask[id]){
                 mTaskLock_[depId] -> lock();
                 mBlockNum[depId] --;
@@ -208,6 +209,7 @@ TaskSystemParallelThreadPoolSleeping::TaskSystemParallelThreadPoolSleeping(int n
     mSupportTask.resize(MaxTaskNum);
     mTaskIdCnt = 0;
     mTargetTasks = MaxTaskNum * 2;
+    finishedTask = 0;
     
     threads = new std::thread[num_threads];
     for (int i = 0; i < num_threads; i++)

@@ -186,6 +186,7 @@ if __name__ == '__main__':
         for i in range(NUM_TEST_RUNS):
             for (cmd, is_reference) in zip(cmds, is_references):
                 cmd = "%s %s" % (cmd, test_name)
+                print(cmd)
                 runtimes = run_test(cmd, is_reference=is_reference)
                 for key in runtimes:
                     if key not in all_runtimes:
