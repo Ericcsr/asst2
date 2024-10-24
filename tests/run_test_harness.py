@@ -123,7 +123,7 @@ if __name__ == '__main__':
                         default=[x[0] for x in LIST_OF_TESTS],
                         help='List of tests to run: %s' % ", ".join([
                             x[0] for x in LIST_OF_TESTS]))
-    parser.add_argument('-a', '--run_async', action='store_true',
+    parser.add_argument('-a', '--run_async', action='store_true', default=False,
                         help='Run async tests')
 
     args = parser.parse_args()
@@ -140,9 +140,11 @@ if __name__ == '__main__':
             num_threads = args.num_threads
         else:
             num_threads = x[1]
-        test_names_and_num_threads.append( (x[0], num_threads) )
+        
         if args.run_async:
             test_names_and_num_threads.append( (x[0] + "_async", num_threads) )
+        else:
+            test_names_and_num_threads.append( (x[0], num_threads) )
 
     print("==============================================================="
           "=================")

@@ -80,7 +80,6 @@ class TaskSystemParallelThreadPoolSleeping: public ITaskSystem {
         std::thread* threads;
         int mNumThreads = 1;
         
-        std::mutex* mTotalTasks_;
         int mTotalTasks = 0;
         int mTargetTasks = 0;
 
