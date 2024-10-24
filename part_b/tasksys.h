@@ -92,11 +92,11 @@ class TaskSystemParallelThreadPoolSleeping: public ITaskSystem {
         std::vector <int> mNumTasks;
         std::vector <int> mBlockNum;
         std::vector<IRunnable *> mRunnable;
-        std::vector <std::mutex*> mTaskLock_;
         std::vector <std::vector<int>> mSupportTask;
 
         std::priority_queue<std::pair<int,int> > readyTasks;
         std::mutex* readyTasks_;
+        std::mutex* taskLock_;
 
         std::atomic<int> finishedTask;
         std::atomic<bool> quitting;
