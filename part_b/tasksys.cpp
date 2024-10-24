@@ -192,14 +192,13 @@ TaskSystemParallelThreadPoolSleeping::TaskSystemParallelThreadPoolSleeping(int n
     // (requiring changes to tasksys.h).
 
     readyTasks_ = new std::mutex();
-    mTaskIdCnt_ = new std::mutex();
     fmutex_ = new std::mutex();
     cv2_ = new std::condition_variable();
 
     mNumThreads = num_threads;
     mFinishedTask.resize(MaxTaskNum);
     mRunningTask.resize(MaxTaskNum);
-    mTaskLock_.resize(MaxTaskNum);
+    //mTaskLock_.resize(MaxTaskNum);
     mNumTasks.resize(MaxTaskNum);
     mBlockNum.resize(MaxTaskNum);
     mRunnable.resize(MaxTaskNum);
@@ -215,7 +214,6 @@ TaskSystemParallelThreadPoolSleeping::TaskSystemParallelThreadPoolSleeping(int n
         threads[i] = std::thread(&TaskSystemParallelThreadPoolSleeping::single_thread_spin, this);
     }
     readyTasks_ -> unlock();
-    mTaskIdCnt_ -> unlock();
 
 }
 
@@ -262,7 +260,7 @@ TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnabl
     taskId = mTaskIdCnt;
     mTaskIdCnt ++;
 
-    mTaskLock_[taskId] = new std::mutex();
+    //mTaskLock_[taskId] = new std::mutex();
     mNumTasks[taskId] = num_total_tasks;
     mBlockNum[taskId] = 0;
     mFinishedTask[taskId] = 0;
