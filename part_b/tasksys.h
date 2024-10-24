@@ -99,6 +99,7 @@ class TaskSystemParallelThreadPoolSleeping: public ITaskSystem {
         std::mutex* readyTasks_;
 
         std::atomic<int> finishedTask;
+        std::atomic<bool> quitting;
 
         std::mutex* fmutex_;
         std::condition_variable* cv2_;

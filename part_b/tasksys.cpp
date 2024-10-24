@@ -127,13 +127,15 @@ void TaskSystemParallelThreadPoolSleeping::single_thread_spin()
     // While loop grab work from readyQueue
     while (true)
     {
+        if (quitting.load()){
+            return ;
+        }
+        if (finishedTask.load() >= mTargetTasks) {
+            cv2_-> notify_one();
+            continue;
+        }
         readyTasks_ -> lock();
         if(readyTasks.empty()){
-            if (finishedTask.load() >= mTargetTasks) {
-                readyTasks_ -> unlock();
-                cv2_-> notify_one();
-                return;
-            }
             readyTasks_ -> unlock();
             continue;
         }
@@ -159,23 +161,17 @@ void TaskSystemParallelThreadPoolSleeping::single_thread_spin()
         mFinishedTask[id] ++;
         mRunningTask[id] --;
         if(mFinishedTask[id] == numTasks){
-            //std::cout << "task: " << id << " done " << mTotalTasks << " " << finishedTask << std::endl;
             for(auto depId: mSupportTask[id]){
-                //mTaskLock_[depId] -> lock();
                 mBlockNum[depId] --;
                 if(mBlockNum[depId] == 0){
-                    //readyTasks_ -> lock();
                     readyTasks.push(std::make_pair(mSupportTask[depId].size(),depId));
-                    //readyTasks_ -> unlock();
                 }
-                //mTaskLock_[depId] -> unlock();
             }
             int current = ++finishedTask;
             if (current >= mTargetTasks) {
-                //mTaskLock_[id] -> unlock();
                 cv2_-> notify_one();
                 readyTasks_ -> unlock();
-                return;
+                continue;
             }
         }
         //mTaskLock_[id] -> unlock();
@@ -211,6 +207,7 @@ TaskSystemParallelThreadPoolSleeping::TaskSystemParallelThreadPoolSleeping(int n
     mTaskIdCnt = 0;
     mTargetTasks = MaxTaskNum * 2;
     finishedTask = 0;
+    quitting = false;
     
     threads = new std::thread[num_threads];
     for (int i = 0; i < num_threads; i++)
@@ -233,6 +230,7 @@ TaskSystemParallelThreadPoolSleeping::~TaskSystemParallelThreadPoolSleeping() {
     mTotalTasks = 0;
     mTaskIdCnt = 0;
     mTargetTasks = -1;
+    quitting = true;
     for (int i = 0; i < mNumThreads; i++)
     {
         threads[i].join();
@@ -282,9 +280,7 @@ TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnabl
         }
     }
     if(!blockNum){
-        
         readyTasks.push(std::make_pair(mSupportTask[taskId].size(),taskId));
-        
     }
 
     
