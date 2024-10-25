@@ -87,6 +87,7 @@ class TaskSystemParallelThreadPoolSleeping: public ITaskSystem {
         std::mutex* mTaskIdCnt_;
         int mTaskIdCnt = 0;
 
+        // std::vector <int> mFinishedTask;
         std::vector <int> mFinishedTask;
         std::vector <int> mRunningTask;
         std::vector <int> mNumTasks;

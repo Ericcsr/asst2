@@ -152,7 +152,7 @@ void TaskSystemParallelThreadPoolSleeping::single_thread_spin()
 
         int id = readyTasks.front();
         // mTaskLock_[id] -> lock();
-        int i = mFinishedTask[id] + mRunningTask[id];
+        int i = mRunningTask[id];
 
         // The last task for taskId id;
         if(mNumTasks[id] == i + 1){
@@ -169,7 +169,7 @@ void TaskSystemParallelThreadPoolSleeping::single_thread_spin()
         //mTaskLock_[id] -> lock();
         readyTasks_ -> lock();
         ++mFinishedTask[id];
-        --mRunningTask[id];
+        // ++mRunningTask[id];
         if(mFinishedTask[id] == numTasks){
             for(auto depId: mSupportTask[id]){
                 --mBlockNum[depId];
