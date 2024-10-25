@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <thread>
 #include <atomic>
+#include <iostream>
 #include <set>
 
 #include "CycleTimer.h"
@@ -62,28 +63,72 @@ typedef struct {
 */
 class YourTask : public IRunnable {
     public:
-        YourTask() {}
+        YourTask(int total_iters) : total_iters(total_iters) {
+            output_array_ = new int[1];
+        }
         ~YourTask() {}
-        void runTask(int task_id, int num_total_tasks) {}
+        void runTask(int task_id, int num_total_tasks) {
+            int result = 1;
+            for(int i = 1; i <= total_iters; i++) {
+                //std::cout<<"i: "<<i<<" "<<result<<std::endl;
+                result = 1ll * result * i % 1000000007;
+            }
+           output_array_[0] = result;
+        }
+    private:
+        int total_iters;
+        int* output_array_;
 };
 /*
  * Implement your test here. Call this function from a wrapper that passes in
  * do_async and num_elements. See `simpleTest`, `simpleTestSync`, and
  * `simpleTestAsync` as an example.
  */
-TestResults yourTest(ITaskSystem* t, bool do_async, int num_elements, int num_bulk_task_launches) {
+TestResults yourTest(ITaskSystem* t, bool do_async) {
     // TODO: initialize your input and output buffers
-    int* output = new int[num_elements];
 
     // TODO: instantiate your bulk task launches
 
     // Run the test
     double start_time = CycleTimer::currentSeconds();
+    
     if (do_async) {
         // TODO:
         // initialize dependency vector
         // make calls to t->runAsyncWithDeps and push TaskID to dependency vector
         // t->sync() at end
+        std::vector<TaskID> emptydeps;
+        YourTask taskA = YourTask(50000000);
+        TaskID a = t->runAsyncWithDeps(&taskA, 8, emptydeps);
+        std::vector<TaskID> secondDeps;
+        YourTask taskB = YourTask(1000000);
+        TaskID b = t->runAsyncWithDeps(&taskB, 4, emptydeps);
+        std::vector<TaskID> dependOnB;
+        dependOnB.push_back(b);
+
+        
+        YourTask taskC = YourTask(10000000);
+        TaskID c = t->runAsyncWithDeps(&taskC, 4, dependOnB);
+
+        std::vector<TaskID> dependOnC;
+        dependOnC.push_back(c);
+
+        YourTask taskD = YourTask(10000000);
+        TaskID d = t->runAsyncWithDeps(&taskD, 4, dependOnC);
+
+        std::vector<TaskID> dependOnD;
+        dependOnD.push_back(d);
+
+        YourTask taskE = YourTask(10000000);
+        TaskID e = t->runAsyncWithDeps(&taskE, 4, dependOnD);
+
+        std::vector<TaskID> dependOnE;
+        dependOnE.push_back(e);
+
+        YourTask taskF = YourTask(10000000);
+        TaskID f = t->runAsyncWithDeps(&taskF, 4, dependOnE);
+
+        t->sync();
     } else {
         // TODO: make calls to t->run
     }
@@ -93,26 +138,15 @@ TestResults yourTest(ITaskSystem* t, bool do_async, int num_elements, int num_bu
     TestResults results;
     results.passed = true;
 
-    for (int i=0; i<num_elements; i++) {
-        int value = 0; // TODO: initialize value
-        for (int j=0; j<num_bulk_task_launches; j++) {
-            // TODO: update value as expected
-        }
-
-        int expected = value;
-        if (output[i] != expected) {
-            results.passed = false;
-            printf("%d: %d expected=%d\n", i, output[i], expected);
-            break;
-        }
-    }
     results.time = end_time - start_time;
 
-    delete [] output;
 
     return results;
 }
 
+TestResults YourTestAsync(ITaskSystem* t) {
+    return yourTest(t, true);
+}
 /*
  * ==================================================================
  *   Begin task definitions used in tests
