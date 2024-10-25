@@ -140,16 +140,19 @@ void TaskSystemParallelThreadPoolSleeping::single_thread_spin()
 
         // std::unique_lock<std::mutex> lk(*readyTasks_);
         // cv_->wait(lk);
-
-        readyTasks_ -> lock();
-        if(readyTasks.empty()){
-            readyTasks_ -> unlock();
-            // std::unique_lock<std::mutex> lk(*readyTasks_);
-            // cv_->wait(lk);
+       // std::cout<<readyTaskSize.load();
+        if(readyTaskSize.load(std::memory_order_relaxed) == 0){
             std::this_thread::yield();
             continue;
         }
 
+        readyTasks_ -> lock();
+        if(readyTasks.empty()){
+            readyTasks_ -> unlock();
+            std::this_thread::yield();
+            continue;
+        }
+        
         int id = readyTasks.front();
         // mTaskLock_[id] -> lock();
         int i = mRunningTask[id];
@@ -157,6 +160,7 @@ void TaskSystemParallelThreadPoolSleeping::single_thread_spin()
         // The last task for taskId id;
         if(mNumTasks[id] == i + 1){
             readyTasks.pop();
+            readyTaskSize--;
         }
         ++mRunningTask[id];
         readyTasks_ -> unlock();
@@ -175,6 +179,7 @@ void TaskSystemParallelThreadPoolSleeping::single_thread_spin()
                 --mBlockNum[depId];
                 if(mBlockNum[depId] == 0){
                     readyTasks.push(depId);
+                    readyTaskSize++;
                     //cv_->notify_all();
                 }
             }
@@ -215,6 +220,7 @@ TaskSystemParallelThreadPoolSleeping::TaskSystemParallelThreadPoolSleeping(int n
     mTargetTasks = MaxTaskNum * 2;
     finishedTask = 0;
     quitting = false;
+    readyTaskSize = 0;
     
     threads = new std::thread[num_threads];
     for (int i = 0; i < num_threads; i++)
@@ -289,6 +295,7 @@ TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnabl
     
     if(!blockNum){
         readyTasks.push(taskId);
+        readyTaskSize++;
         
     }
     
@@ -301,7 +308,6 @@ TaskID TaskSystemParallelThreadPoolSleeping::runAsyncWithDeps(IRunnable* runnabl
     //mTaskLock_[taskId] -> unlock();
     readyTasks_->unlock();
     //cv_->notify_all();
-    
     return taskId;
 }
 
